@@ -1,5 +1,6 @@
 require 'test/unit'
 require 'active_record'
+require 'fileutils'
 require File.expand_path(File.dirname(__FILE__) + "/../lib/paranoia")
 
 DB_FILE = 'tmp/test_db'
@@ -12,6 +13,7 @@ ActiveRecord::Base.connection.execute 'CREATE TABLE paranoid_models (id INTEGER 
 ActiveRecord::Base.connection.execute 'CREATE TABLE featureful_models (id INTEGER NOT NULL PRIMARY KEY, deleted_at DATETIME, name VARCHAR(32))'
 ActiveRecord::Base.connection.execute 'CREATE TABLE plain_models (id INTEGER NOT NULL PRIMARY KEY, deleted_at DATETIME)'
 ActiveRecord::Base.connection.execute 'CREATE TABLE callback_models (id INTEGER NOT NULL PRIMARY KEY, deleted_at DATETIME)'
+ActiveRecord::Base.connection.execute 'CREATE TABLE scoped_models (id INTEGER NOT NULL PRIMARY KEY, state INTEGER, deleted_at DATETIME)'
 
 class ParanoiaTest < Test::Unit::TestCase
   def test_plain_model_class_is_not_paranoid
@@ -127,6 +129,35 @@ class ParanoiaTest < Test::Unit::TestCase
     assert_equal false, ParanoidModel.unscoped.exists?(model.id)
   end
 
+  def test_with_additional_scopes
+    model = ScopedModel.new
+    model.save
+
+    model2 = ScopedModel.new(:state => 2)
+    model2.save
+
+    model3 = ScopedModel.new
+    model3.save
+    model3.delete
+
+    assert_equal 1, ScopedModel.count
+    assert_equal 3, ScopedModel.unscoped.count
+    assert_equal 1, ScopedModel.only_deleted.count
+    assert_equal 2, ScopedModel.default_scope_with_deleted.count
+
+    model2.delete
+    assert_equal 1, ScopedModel.count
+    assert_equal 3, ScopedModel.unscoped.count
+    assert_equal 2, ScopedModel.only_deleted.count
+    assert_equal 2, ScopedModel.default_scope_with_deleted.count
+
+    model.delete
+    assert_equal 0, ScopedModel.count
+    assert_equal 3, ScopedModel.unscoped.count
+    assert_equal 3, ScopedModel.only_deleted.count
+    assert_equal 2, ScopedModel.default_scope_with_deleted.count
+  end
+
   private
   def get_featureful_model
     FeaturefulModel.new(:name => "not empty")
@@ -150,4 +181,8 @@ end
 class CallbackModel < ActiveRecord::Base
   acts_as_paranoid
   before_destroy {|model| model.instance_variable_set :@callback_called, true }
+end
+
+class ScopedModel < ActiveRecord::Base
+  self.acts_as_paranoid where(:state => 1).scoped
 end
