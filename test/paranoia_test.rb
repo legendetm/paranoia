@@ -14,6 +14,8 @@ ActiveRecord::Base.connection.execute 'CREATE TABLE featureful_models (id INTEGE
 ActiveRecord::Base.connection.execute 'CREATE TABLE plain_models (id INTEGER NOT NULL PRIMARY KEY, deleted_at DATETIME)'
 ActiveRecord::Base.connection.execute 'CREATE TABLE callback_models (id INTEGER NOT NULL PRIMARY KEY, deleted_at DATETIME)'
 ActiveRecord::Base.connection.execute 'CREATE TABLE scoped_models (id INTEGER NOT NULL PRIMARY KEY, state INTEGER, deleted_at DATETIME)'
+ActiveRecord::Base.connection.execute 'CREATE TABLE uniq_models (id INTEGER NOT NULL PRIMARY KEY, state INTEGER, deleted_at DATETIME)'
+ActiveRecord::Base.connection.execute 'CREATE TABLE uniq_without_deleted_models (id INTEGER NOT NULL PRIMARY KEY, state INTEGER, deleted_at DATETIME)'
 
 class ParanoiaTest < Test::Unit::TestCase
   def test_plain_model_class_is_not_paranoid
@@ -158,6 +160,22 @@ class ParanoiaTest < Test::Unit::TestCase
     assert_equal 2, ScopedModel.default_scope_with_deleted.count
   end
 
+  def test_validate_uniqueness
+    model = UniqModel.create(:state => 3)
+    assert_equal true,  model.valid?
+    model.delete
+
+    model = UniqModel.new(:state => 3)
+    assert_equal false, model.valid?
+
+    model = UniqWithoutDeletedModel.create(:state => 3)
+    assert_equal true, model.valid?
+    model.delete
+
+    model = UniqWithoutDeletedModel.new(:state => 3)
+    assert_equal true, model.valid?
+  end
+
   private
   def get_featureful_model
     FeaturefulModel.new(:name => "not empty")
@@ -185,4 +203,14 @@ end
 
 class ScopedModel < ActiveRecord::Base
   self.acts_as_paranoid where(:state => 1).scoped
+end
+
+class UniqWithoutDeletedModel < ActiveRecord::Base
+  self.acts_as_paranoid
+  validates :state, :uniqueness_without_deleted => true
+end
+
+class UniqModel < ActiveRecord::Base
+  self.acts_as_paranoid
+  validates :state, :uniqueness => true
 end

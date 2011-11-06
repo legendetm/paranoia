@@ -69,3 +69,10 @@ protected
     end
   end
 end
+
+class UniquenessWithoutDeletedValidator < ActiveRecord::Validations::UniquenessValidator
+protected
+  def build_relation(klass, table, attribute, value)
+    super.and(table[:deleted_at].eq(nil))
+  end
+end
