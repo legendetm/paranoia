@@ -4,35 +4,19 @@ Paranoia is a re-implementation of [acts\_as\_paranoid](http://github.com/techno
 
 You would use either plugin / gem if you wished that when you called `destroy` on an Active Record object that it didn't actually destroy it, but just "hid" the record. Paranoia does this by setting a `deleted_at` field to the current time when you `destroy` a record, and hides it by scoping all queries on your model to only include records which do not have a `deleted_at` field.
 
+You can use this gem with your default\_scope, just replace default\_scope with acts\_as\_paranoid. Example below. 
+
+I have tested it only with rails 3.1.
+
 ## Installation & Usage
-
-Put this in your Gemfile:
-
-    gem 'paranoia'
-
-Then run `bundle`. Done.
-
-Updating is as simple as `bundle update paranoia`.
-
-#### Rails 3
 
 In your _Gemfile_:
 
-    gem 'paranoia'
+    gem 'paranoia', :git => git://github.com/legendetm/paranoia.git
 
 Then run:
 
     bundle install
-
-#### Rails 2:
-
-In your _config/environment.rb_:
-
-    config.gem 'paranoia'
-
-Then run:
-
-    rake gems:install
 
 #### Run your migrations for the desired models
 
@@ -52,6 +36,14 @@ Then run:
 
     class Client < ActiveRecord::Base
       acts_as_paranoid
+
+      ...
+    end
+
+or with your default scope
+
+    class Client < ActiveRecord::Base
+      acts_as_paranoid where(:published => true)
 
       ...
     end
@@ -81,6 +73,15 @@ You can replace the older acts_as_paranoid methods as follows:
     find_only_deleted(:all)       # => only_deleted
     find_only_deleted(:first)     # => only_deleted.first
     find_only_deleted(id)         # => only_deleted.find(id)
+
+#### Uniqueness validation
+
+    class Client < ActiveRecord::Base
+      acts_as_paranoid
+
+      validates :uniq_column, :uniqueness_without_deleted => true
+      ...
+    end
 
 ## License
 
